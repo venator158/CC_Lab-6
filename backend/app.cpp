@@ -38,17 +38,27 @@ int main() {
     std::cout << "Server listening on port 8080 (hostname: " << hostname << ")" << std::endl;
     
     // Accept connections in loop
+// Accept connections in loop
     while(true) {
         int client_fd = accept(server_fd, NULL, NULL);
         if (client_fd < 0) continue;
         
+        // Read the incoming HTTP request from Nginx to clear the buffer
+        char buffer[1024] = {0};
+        read(client_fd, buffer, 1024);
+        
         // Simple HTTP response
+        std::string body = "Served by backend: " + std::string(hostname) + "\n";
         std::string response = "HTTP/1.1 200 OK\r\n";
         response += "Content-Type: text/plain\r\n";
+        response += "Content-Length: " + std::to_string(body.length()) + "\r\n";
         response += "Connection: close\r\n\r\n";
-        response += "Served by backend: " + std::string(hostname) + "\n";
+        response += body;
         
         send(client_fd, response.c_str(), response.length(), 0);
+        
+        // Give the kernel time to flush the buffer to the proxy before closing
+        usleep(10000); 
         close(client_fd);
     }
     
